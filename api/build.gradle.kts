@@ -62,8 +62,9 @@ tasks {
 }
 
 mavenPublishing {
-    publishToMavenCentral()
-    signAllPublications()
+    // BTC fork: published to the BTC static repo, not Maven Central. The btcRepo repository is
+    // injected by BTCVelocity/btc-publish.init.gradle.kts, and there are no signing keys here,
+    // so publishToMavenCentral()/signAllPublications() are deliberately absent.
     coordinates(project.group as String, "miniplaceholders-api", project.version as String)
 
     pom {

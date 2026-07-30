@@ -39,8 +39,7 @@ dokka {
 }
 
 mavenPublishing {
-    publishToMavenCentral()
-    signAllPublications()
+    // BTC fork: see api/build.gradle.kts — published to the BTC static repo, unsigned.
     coordinates(project.group as String, "miniplaceholders-kotlin-ext", project.version as String)
     pom {
         name.set(project.name)

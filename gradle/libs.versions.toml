@@ -3,8 +3,11 @@ metadata.format.version = "1.1"
 [versions]
 
 # Platform
-minecraft = "26.1"
-paper = "1.21.11-R0.1-SNAPSHOT"
+# BTC fork: retargeted at the 26.2 line used by BTC-CORE, Typewriter and btcMobs.
+# Only minecraft and paper diverge from upstream. The other platform versions follow upstream
+# because the modules that use them are excluded from this fork's build.
+minecraft = "26.2"
+paper = "26.2.build.48-alpha"
 velocity = "3.5.1"
 minestom = "2026.04.13-1.21.11"
 fabric-loader = "0.19.3"
