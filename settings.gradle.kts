@@ -31,16 +31,19 @@ plugins {
     kotlin("jvm") version "2.3.20" apply false
 }
 
+// BTC fork scope: Paper (BTC-CORE) and Velocity (BTCVelocity) only.
+// The minestom/fabric/sponge sources stay on disk so upstream merges apply cleanly, but they are
+// excluded from the build — we ship none of them, and fabric additionally fails at configuration
+// time upstream because net.kyori:adventure-platform-fabric:6.9.0-SNAPSHOT is not published.
 arrayOf(
     "connect",
     "api",
     "kotlin-ext",
     "common",
     "paper",
-    "minestom",
     "velocity",
-    "fabric",
-    "sponge",
+    // Not shipped, but the runServer/runVelocity dev tasks load it as a sample expansion
+    // (see build-logic/miniplaceholders.runtask.gradle.kts).
     "example-expansion-provider"
 ).forEach {
     include("miniplaceholders-$it")
