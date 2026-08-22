@@ -95,6 +95,7 @@ final class ExpansionImpl implements Expansion {
       throw new IllegalStateException("Expansion" + this.name + "is already registered");
     }
     MiniPlaceholders.expansions.add(this);
+    MiniPlaceholders.invalidateResolverCache();
   }
 
   @Override
@@ -103,6 +104,7 @@ final class ExpansionImpl implements Expansion {
       throw new IllegalStateException("Expansion " + this.name + " is not registered");
     }
     MiniPlaceholders.expansions.remove(this);
+    MiniPlaceholders.invalidateResolverCache();
   }
 
   @Override
