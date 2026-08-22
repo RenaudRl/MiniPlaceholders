@@ -28,7 +28,6 @@ public final class Resolvers {
      * @param resolver the resolver to check
      * @return false if the TagResolver is the same as TagResolver.empty(), else true
      * @since 1.2.0
-     * 
      */
     public static boolean isNotEmpty(final TagResolver resolver) {
         return resolver != TagResolver.empty();
@@ -44,6 +43,23 @@ public final class Resolvers {
     public static void applyIfNotEmpty(final TagResolver resolver, final TagResolver.Builder builder) {
         if (isNotEmpty(resolver)) {
             builder.resolver(resolver);
+        }
+    }
+
+    /**
+     * Collects a TagResolver into a list in case it is not a TagResolver.empty().
+     *
+     * <p>The list form exists so the parts stay visible to
+     * {@link io.github.miniplaceholders.api.placeholder.IndexedTagResolver}, which needs to read
+     * their keys. A {@code TagResolver.Builder} folds them into an opaque sequence and loses that.
+     *
+     * @param resolver the resolver to check
+     * @param parts the list the resolver is appended to when it is not empty
+     * @since 3.2.0
+     */
+    public static void collectIfNotEmpty(final TagResolver resolver, final java.util.List<TagResolver> parts) {
+        if (isNotEmpty(resolver)) {
+            parts.add(resolver);
         }
     }
 }

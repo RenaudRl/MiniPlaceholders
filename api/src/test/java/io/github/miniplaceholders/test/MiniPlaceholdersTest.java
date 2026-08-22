@@ -9,22 +9,30 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class MiniPlaceholdersTest implements MiniTest {
+    /**
+     * Composing audience and global resolvers manually produces the same observable membership
+     * results as the combined API resolver.
+     */
     @Test
-    void methodEquality(){
+    void combinedResolverMatchesManualComposition(){
         Expansion.builder("equality")
             .audiencePlaceholder("audience", Tags.emptyAudienceResolver())
             .globalPlaceholder("global", (queue, ctx) -> Tags.EMPTY_TAG)
             .build()
         .register();
 
-
-        assertEquals(
-            MiniPlaceholders.audienceGlobalPlaceholders(),
-            TagResolver.resolver(
-                MiniPlaceholders.audiencePlaceholders(),
-                MiniPlaceholders.globalPlaceholders()
-            )
+        final TagResolver combined = MiniPlaceholders.audienceGlobalPlaceholders();
+        final TagResolver composed = TagResolver.resolver(
+            MiniPlaceholders.audiencePlaceholders(),
+            MiniPlaceholders.globalPlaceholders()
         );
+
+        for (final String name : new String[]{"equality_audience", "equality_global", "absent_tag"}) {
+            assertEquals(composed.has(name), combined.has(name), name);
+        }
+        assertTrue(combined.has("equality_audience"));
+        assertTrue(combined.has("equality_global"));
+        assertFalse(combined.has("absent_tag"));
     }
 
     @Test
