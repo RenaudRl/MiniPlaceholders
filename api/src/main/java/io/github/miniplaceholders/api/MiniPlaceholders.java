@@ -9,13 +9,18 @@ import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.jetbrains.annotations.Unmodifiable;
 import org.jspecify.annotations.Nullable;
 
+import io.github.miniplaceholders.api.placeholder.IndexedTagResolver;
+
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static io.github.miniplaceholders.api.utils.Resolvers.applyIfNotEmpty;
+import static io.github.miniplaceholders.api.utils.Resolvers.collectIfNotEmpty;
 
 /**
  * MiniPlaceholders, a component-based placeholders API.
@@ -32,6 +37,42 @@ import static io.github.miniplaceholders.api.utils.Resolvers.applyIfNotEmpty;
 public final class MiniPlaceholders {
     private MiniPlaceholders() {}
     static final Set<Expansion> expansions = ConcurrentHashMap.newKeySet();
+
+    /**
+     * Cache des resolvers assembles, invalide des que le registre d'expansions change.
+     *
+     * <h2>Pourquoi ce cache n'est pas une optimisation opportuniste</h2>
+     *
+     * <p>Les cinq methodes ci-dessous sont appelees <em>par message</em> — le gestionnaire reseau
+     * de CraftEngine demande « est-ce une balise de placeholder ? » pour chaque balise de chaque
+     * message sortant. Chaque appel reconstruisait donc l'assemblage complet.
+     *
+     * <p>Tant que l'assemblage se contentait de cabler ~71 references de resolvers, ce gaspillage
+     * restait discret. Indexer les cles l'a rendu proportionnel au nombre <em>total</em> de
+     * placeholders, et le banc l'a immediatement sanctionne : 450 expulsions pour delai de
+     * keepalive sur une passe de dix minutes, la ou la meme passe sans le changement n'en avait
+     * aucune. Le serveur ne repondait plus aux keepalives.
+     *
+     * <p>Autrement dit : rendre {@code has} moins cher n'a de sens que si construire le resolver
+     * cesse d'etre paye a chaque appel. Les deux vont ensemble.
+     *
+     * <p>La course entre deux constructions concurrentes est benigne : les deux produisent un
+     * resolver equivalent, et la derniere ecriture gagne. Aucun verrou n'est pris sur un chemin
+     * aussi chaud.
+     */
+    private record CachedResolver(int version, TagResolver resolver) {}
+
+    private static volatile int registryVersion = 0;
+    private static volatile CachedResolver globalCache;
+    private static volatile CachedResolver audienceCache;
+    private static volatile CachedResolver relationalCache;
+    private static volatile CachedResolver audienceGlobalCache;
+    private static volatile CachedResolver relationalGlobalCache;
+
+    /** Appele a chaque enregistrement ou retrait d'expansion. */
+    static void invalidateResolverCache() {
+        registryVersion++;
+    }
 
     /**
      * Get the platform on which MiniPlaceholders is running.
@@ -60,12 +101,18 @@ public final class MiniPlaceholders {
      * @since 3.0.0
      */
     public static TagResolver globalPlaceholders() {
-        final TagResolver.Builder builder = TagResolver.builder();
-        for (final Expansion expansion : expansions) {
-            final TagResolver resolver = expansion.globalPlaceholders();
-            applyIfNotEmpty(resolver, builder);
+        final int version = registryVersion;
+        final CachedResolver cached = globalCache;
+        if (cached != null && cached.version() == version) {
+            return cached.resolver();
         }
-        return builder.build();
+        final List<TagResolver> parts = new ArrayList<>(expansions.size());
+        for (final Expansion expansion : expansions) {
+            collectIfNotEmpty(expansion.globalPlaceholders(), parts);
+        }
+        final TagResolver built = IndexedTagResolver.of(parts);
+        globalCache = new CachedResolver(version, built);
+        return built;
     }
 
     /**
@@ -81,12 +128,18 @@ public final class MiniPlaceholders {
      * @since 3.0.0
      */
     public static TagResolver audiencePlaceholders() {
-        final TagResolver.Builder resolvers = TagResolver.builder();
-        for (final Expansion expansion : expansions) {
-            final TagResolver resolver = expansion.audiencePlaceholders();
-            applyIfNotEmpty(resolver, resolvers);
+        final int version = registryVersion;
+        final CachedResolver cached = audienceCache;
+        if (cached != null && cached.version() == version) {
+            return cached.resolver();
         }
-        return resolvers.build();
+        final List<TagResolver> parts = new ArrayList<>(expansions.size());
+        for (final Expansion expansion : expansions) {
+            collectIfNotEmpty(expansion.audiencePlaceholders(), parts);
+        }
+        final TagResolver built = IndexedTagResolver.of(parts);
+        audienceCache = new CachedResolver(version, built);
+        return built;
     }
 
     /**
@@ -105,12 +158,19 @@ public final class MiniPlaceholders {
      * @see RelationalAudience
      */
     public static TagResolver relationalPlaceholders() {
-        final TagResolver.Builder builder = TagResolver.builder();
+        final int version = registryVersion;
+        final CachedResolver cached = relationalCache;
+        if (cached != null && cached.version() == version) {
+            return cached.resolver();
+        }
+        final List<TagResolver> parts = new ArrayList<>(expansions.size());
         for (final Expansion expansion : expansions) {
-            applyIfNotEmpty(expansion.relationalPlaceholders(), builder);
+            collectIfNotEmpty(expansion.relationalPlaceholders(), parts);
         }
 
-        return builder.build();
+        final TagResolver built = IndexedTagResolver.of(parts);
+        relationalCache = new CachedResolver(version, built);
+        return built;
     }
 
     /**
@@ -134,14 +194,21 @@ public final class MiniPlaceholders {
      * @since 1.1.0
      */
     public static TagResolver audienceGlobalPlaceholders() {
-        final TagResolver.Builder builder = TagResolver.builder();
+        final int version = registryVersion;
+        final CachedResolver cached = audienceGlobalCache;
+        if (cached != null && cached.version() == version) {
+            return cached.resolver();
+        }
+        final List<TagResolver> parts = new ArrayList<>(expansions.size() * 2);
 
         for (final Expansion expansion : expansions) {
-            applyIfNotEmpty(expansion.audiencePlaceholders(), builder);
-            applyIfNotEmpty(expansion.globalPlaceholders(), builder);
+            collectIfNotEmpty(expansion.audiencePlaceholders(), parts);
+            collectIfNotEmpty(expansion.globalPlaceholders(), parts);
         }
 
-        return builder.build();
+        final TagResolver built = IndexedTagResolver.of(parts);
+        audienceGlobalCache = new CachedResolver(version, built);
+        return built;
     }
 
     /**
@@ -166,14 +233,21 @@ public final class MiniPlaceholders {
      * @see RelationalAudience
      */
     public static TagResolver relationalGlobalPlaceholders() {
-        final TagResolver.Builder builder = TagResolver.builder();
+        final int version = registryVersion;
+        final CachedResolver cached = relationalGlobalCache;
+        if (cached != null && cached.version() == version) {
+            return cached.resolver();
+        }
+        final List<TagResolver> parts = new ArrayList<>(expansions.size() * 3);
         for (final Expansion expansion : expansions) {
-            applyIfNotEmpty(expansion.audiencePlaceholders(), builder);
-            applyIfNotEmpty(expansion.relationalPlaceholders(), builder);
-            applyIfNotEmpty(expansion.globalPlaceholders(), builder);
+            collectIfNotEmpty(expansion.audiencePlaceholders(), parts);
+            collectIfNotEmpty(expansion.relationalPlaceholders(), parts);
+            collectIfNotEmpty(expansion.globalPlaceholders(), parts);
         }
 
-        return builder.build();
+        final TagResolver built = IndexedTagResolver.of(parts);
+        relationalGlobalCache = new CachedResolver(version, built);
+        return built;
     }
 
     /**

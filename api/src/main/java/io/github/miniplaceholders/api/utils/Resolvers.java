@@ -46,4 +46,21 @@ public final class Resolvers {
             builder.resolver(resolver);
         }
     }
+
+    /**
+     * Collects a TagResolver into a list in case it is not a TagResolver.empty().
+     *
+     * <p>The list form exists so the parts stay visible to
+     * {@link io.github.miniplaceholders.api.placeholder.IndexedTagResolver}, which needs to read
+     * their keys. A {@code TagResolver.Builder} folds them into an opaque sequence and loses that.
+     *
+     * @param resolver the resolver to check
+     * @param parts the list the resolver is appended to when it is not empty
+     * @since 3.2.0
+     */
+    public static void collectIfNotEmpty(final TagResolver resolver, final java.util.List<TagResolver> parts) {
+        if (isNotEmpty(resolver)) {
+            parts.add(resolver);
+        }
+    }
 }
