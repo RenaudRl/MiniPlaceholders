@@ -14,33 +14,22 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * A resolver that answers {@link #has(String)} from one set covering every expansion, while
- * delegating {@link #resolve} to the original sequence.
+ * Answers {@link #has(String)} from a single set covering every assembled part, in constant time
+ * regardless of how many expansions are registered.
  *
- * <h2>Why this exists</h2>
+ * <p>Use this instead of {@link TagResolver#resolver(Iterable)} when the assembled resolver is
+ * asked about tags far more often than it resolves them. Consumers that inspect every tag of every
+ * message — CraftEngine's network manager, for one — otherwise pay a walk over one resolver per
+ * expansion on each miss.
  *
- * <p>{@link PlaceholderTagResolver#has(String)} was made O(1) because a linear walk over the
- * placeholders of a single expansion was the largest CPU consumer measured on a server registering
- * many of them. That fixed one level. The level above was untouched: the resolvers returned by
- * {@link io.github.miniplaceholders.api.MiniPlaceholders} assemble one resolver <em>per
- * expansion</em> into Adventure's sequential resolver, and {@code SequentialTagResolver.has}
- * walks that structure in full on every miss.
+ * <p>Only membership is indexed. {@link #resolve} delegates to the sequence unchanged: a
+ * placeholder may match a name and still return {@code null}, so the "first non-null result"
+ * contract belongs to the sequence and cannot be derived from the index.
  *
- * <p>A profile taken on 22 August 2026 — three passes, fifty moving players — attributed 6,58 % of
- * whole-JVM CPU to this chain, roughly two thirds of it reached through CraftEngine's network
- * manager, which asks "is this a placeholder tag?" for every tag of every outgoing message. The
- * per-expansion cost was already minimal; what remained was the number of expansions walked.
+ * <p>A part whose keys cannot be enumerated is kept aside and still consulted by {@link #has}, so
+ * assembling an unknown {@link TagResolver} never loses its tags.
  *
- * <h2>What is and is not indexed</h2>
- *
- * <p>Only membership is indexed. {@link #resolve} delegates to the sequence unchanged, because a
- * placeholder may match a name and still return {@code null} — an audience placeholder does so
- * when the audience is not of its type — and the contract is "first non-null result".
- *
- * <p>A part whose keys cannot be enumerated (any {@link TagResolver} that is not one of ours) is
- * kept aside and still asked. Answering {@code false} for such a part would silently drop tags,
- * and would <em>improve</em> every profile while doing so — which is exactly why it is guarded by
- * a test rather than by care.
+ * <p>Instances are immutable and safe to share across threads.
  */
 public final class IndexedTagResolver implements TagResolver {
     private final TagResolver delegate;
@@ -99,8 +88,8 @@ public final class IndexedTagResolver implements TagResolver {
         if (this.keys.contains(name)) {
             return true;
         }
-        // Same reasoning as PlaceholderTagResolver.has: a miss is the common outcome, and
-        // lowercasing unconditionally would allocate a String on the majority of calls.
+        // A miss is the common outcome here, so lowercasing unconditionally would allocate on the
+        // majority of calls.
         if (needsLowerCasing(name) && this.keys.contains(name.toLowerCase(Locale.ROOT))) {
             return true;
         }

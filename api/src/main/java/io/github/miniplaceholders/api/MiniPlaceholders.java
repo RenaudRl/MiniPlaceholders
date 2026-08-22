@@ -39,26 +39,12 @@ public final class MiniPlaceholders {
     static final Set<Expansion> expansions = ConcurrentHashMap.newKeySet();
 
     /**
-     * Cache des resolvers assembles, invalide des que le registre d'expansions change.
+     * An assembled resolver together with the registry version it was built from.
      *
-     * <h2>Pourquoi ce cache n'est pas une optimisation opportuniste</h2>
-     *
-     * <p>Les cinq methodes ci-dessous sont appelees <em>par message</em> — le gestionnaire reseau
-     * de CraftEngine demande « est-ce une balise de placeholder ? » pour chaque balise de chaque
-     * message sortant. Chaque appel reconstruisait donc l'assemblage complet.
-     *
-     * <p>Tant que l'assemblage se contentait de cabler ~71 references de resolvers, ce gaspillage
-     * restait discret. Indexer les cles l'a rendu proportionnel au nombre <em>total</em> de
-     * placeholders, et le banc l'a immediatement sanctionne : 450 expulsions pour delai de
-     * keepalive sur une passe de dix minutes, la ou la meme passe sans le changement n'en avait
-     * aucune. Le serveur ne repondait plus aux keepalives.
-     *
-     * <p>Autrement dit : rendre {@code has} moins cher n'a de sens que si construire le resolver
-     * cesse d'etre paye a chaque appel. Les deux vont ensemble.
-     *
-     * <p>La course entre deux constructions concurrentes est benigne : les deux produisent un
-     * resolver equivalent, et la derniere ecriture gagne. Aucun verrou n'est pris sur un chemin
-     * aussi chaud.
+     * <p>The resolver-returning methods below are called per message by consumers that inspect
+     * tags, so rebuilding the assembly on every call is not affordable. Two threads may build
+     * concurrently; both produce an equivalent resolver and the last write wins, which is why no
+     * lock is taken on this path.
      */
     private record CachedResolver(int version, TagResolver resolver) {}
 

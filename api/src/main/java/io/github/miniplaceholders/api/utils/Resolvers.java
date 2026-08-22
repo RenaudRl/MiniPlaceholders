@@ -50,9 +50,9 @@ public final class Resolvers {
     /**
      * Collects a TagResolver into a list in case it is not a TagResolver.empty().
      *
-     * <p>The list form exists so the parts stay visible to
-     * {@link io.github.miniplaceholders.api.placeholder.IndexedTagResolver}, which needs to read
-     * their keys. A {@code TagResolver.Builder} folds them into an opaque sequence and loses that.
+     * <p>Use this rather than {@link #applyIfNotEmpty} when the caller must still inspect the
+     * individual parts afterwards; a {@code TagResolver.Builder} folds them into an opaque
+     * sequence.
      *
      * @param resolver the resolver to check
      * @param parts the list the resolver is appended to when it is not empty
