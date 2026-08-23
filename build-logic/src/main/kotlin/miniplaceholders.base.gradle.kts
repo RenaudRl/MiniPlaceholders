@@ -22,7 +22,8 @@ tasks {
 
 java{
     toolchain{
+        // No vendor pin: the BTC toolchain is Oracle JDK 25. Forcing Azul here would make
+        // every build download a second JDK for no benefit.
         languageVersion.set(JavaLanguageVersion.of(25))
-        vendor.set(JvmVendorSpec.AZUL)
     }
 }

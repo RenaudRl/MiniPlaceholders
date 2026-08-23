@@ -9,13 +9,18 @@ import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.jetbrains.annotations.Unmodifiable;
 import org.jspecify.annotations.Nullable;
 
+import io.github.miniplaceholders.api.placeholder.IndexedTagResolver;
+
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static io.github.miniplaceholders.api.utils.Resolvers.applyIfNotEmpty;
+import static io.github.miniplaceholders.api.utils.Resolvers.collectIfNotEmpty;
 
 /**
  * MiniPlaceholders, a component-based placeholders API.
@@ -32,6 +37,28 @@ import static io.github.miniplaceholders.api.utils.Resolvers.applyIfNotEmpty;
 public final class MiniPlaceholders {
     private MiniPlaceholders() {}
     static final Set<Expansion> expansions = ConcurrentHashMap.newKeySet();
+
+    /**
+     * An assembled resolver together with the registry version it was built from.
+     *
+     * <p>The resolver-returning methods below are called per message by consumers that inspect
+     * tags, so rebuilding the assembly on every call is not affordable. Two threads may build
+     * concurrently; both produce an equivalent resolver and the last write wins, which is why no
+     * lock is taken on this path.
+     */
+    private record CachedResolver(int version, TagResolver resolver) {}
+
+    private static volatile int registryVersion = 0;
+    private static volatile CachedResolver globalCache;
+    private static volatile CachedResolver audienceCache;
+    private static volatile CachedResolver relationalCache;
+    private static volatile CachedResolver audienceGlobalCache;
+    private static volatile CachedResolver relationalGlobalCache;
+
+    /** Appele a chaque enregistrement ou retrait d'expansion. */
+    static void invalidateResolverCache() {
+        registryVersion++;
+    }
 
     /**
      * Get the platform on which MiniPlaceholders is running.
@@ -60,12 +87,18 @@ public final class MiniPlaceholders {
      * @since 3.0.0
      */
     public static TagResolver globalPlaceholders() {
-        final TagResolver.Builder builder = TagResolver.builder();
-        for (final Expansion expansion : expansions) {
-            final TagResolver resolver = expansion.globalPlaceholders();
-            applyIfNotEmpty(resolver, builder);
+        final int version = registryVersion;
+        final CachedResolver cached = globalCache;
+        if (cached != null && cached.version() == version) {
+            return cached.resolver();
         }
-        return builder.build();
+        final List<TagResolver> parts = new ArrayList<>(expansions.size());
+        for (final Expansion expansion : expansions) {
+            collectIfNotEmpty(expansion.globalPlaceholders(), parts);
+        }
+        final TagResolver built = IndexedTagResolver.of(parts);
+        globalCache = new CachedResolver(version, built);
+        return built;
     }
 
     /**
@@ -81,12 +114,18 @@ public final class MiniPlaceholders {
      * @since 3.0.0
      */
     public static TagResolver audiencePlaceholders() {
-        final TagResolver.Builder resolvers = TagResolver.builder();
-        for (final Expansion expansion : expansions) {
-            final TagResolver resolver = expansion.audiencePlaceholders();
-            applyIfNotEmpty(resolver, resolvers);
+        final int version = registryVersion;
+        final CachedResolver cached = audienceCache;
+        if (cached != null && cached.version() == version) {
+            return cached.resolver();
         }
-        return resolvers.build();
+        final List<TagResolver> parts = new ArrayList<>(expansions.size());
+        for (final Expansion expansion : expansions) {
+            collectIfNotEmpty(expansion.audiencePlaceholders(), parts);
+        }
+        final TagResolver built = IndexedTagResolver.of(parts);
+        audienceCache = new CachedResolver(version, built);
+        return built;
     }
 
     /**
@@ -105,12 +144,19 @@ public final class MiniPlaceholders {
      * @see RelationalAudience
      */
     public static TagResolver relationalPlaceholders() {
-        final TagResolver.Builder builder = TagResolver.builder();
+        final int version = registryVersion;
+        final CachedResolver cached = relationalCache;
+        if (cached != null && cached.version() == version) {
+            return cached.resolver();
+        }
+        final List<TagResolver> parts = new ArrayList<>(expansions.size());
         for (final Expansion expansion : expansions) {
-            applyIfNotEmpty(expansion.relationalPlaceholders(), builder);
+            collectIfNotEmpty(expansion.relationalPlaceholders(), parts);
         }
 
-        return builder.build();
+        final TagResolver built = IndexedTagResolver.of(parts);
+        relationalCache = new CachedResolver(version, built);
+        return built;
     }
 
     /**
@@ -134,14 +180,21 @@ public final class MiniPlaceholders {
      * @since 1.1.0
      */
     public static TagResolver audienceGlobalPlaceholders() {
-        final TagResolver.Builder builder = TagResolver.builder();
+        final int version = registryVersion;
+        final CachedResolver cached = audienceGlobalCache;
+        if (cached != null && cached.version() == version) {
+            return cached.resolver();
+        }
+        final List<TagResolver> parts = new ArrayList<>(expansions.size() * 2);
 
         for (final Expansion expansion : expansions) {
-            applyIfNotEmpty(expansion.audiencePlaceholders(), builder);
-            applyIfNotEmpty(expansion.globalPlaceholders(), builder);
+            collectIfNotEmpty(expansion.audiencePlaceholders(), parts);
+            collectIfNotEmpty(expansion.globalPlaceholders(), parts);
         }
 
-        return builder.build();
+        final TagResolver built = IndexedTagResolver.of(parts);
+        audienceGlobalCache = new CachedResolver(version, built);
+        return built;
     }
 
     /**
@@ -166,14 +219,21 @@ public final class MiniPlaceholders {
      * @see RelationalAudience
      */
     public static TagResolver relationalGlobalPlaceholders() {
-        final TagResolver.Builder builder = TagResolver.builder();
+        final int version = registryVersion;
+        final CachedResolver cached = relationalGlobalCache;
+        if (cached != null && cached.version() == version) {
+            return cached.resolver();
+        }
+        final List<TagResolver> parts = new ArrayList<>(expansions.size() * 3);
         for (final Expansion expansion : expansions) {
-            applyIfNotEmpty(expansion.audiencePlaceholders(), builder);
-            applyIfNotEmpty(expansion.relationalPlaceholders(), builder);
-            applyIfNotEmpty(expansion.globalPlaceholders(), builder);
+            collectIfNotEmpty(expansion.audiencePlaceholders(), parts);
+            collectIfNotEmpty(expansion.relationalPlaceholders(), parts);
+            collectIfNotEmpty(expansion.globalPlaceholders(), parts);
         }
 
-        return builder.build();
+        final TagResolver built = IndexedTagResolver.of(parts);
+        relationalGlobalCache = new CachedResolver(version, built);
+        return built;
     }
 
     /**

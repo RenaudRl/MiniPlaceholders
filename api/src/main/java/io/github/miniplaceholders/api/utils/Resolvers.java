@@ -46,4 +46,21 @@ public final class Resolvers {
             builder.resolver(resolver);
         }
     }
+
+    /**
+     * Collects a TagResolver into a list in case it is not a TagResolver.empty().
+     *
+     * <p>Use this rather than {@link #applyIfNotEmpty} when the caller must still inspect the
+     * individual parts afterwards; a {@code TagResolver.Builder} folds them into an opaque
+     * sequence.
+     *
+     * @param resolver the resolver to check
+     * @param parts the list the resolver is appended to when it is not empty
+     * @since 3.2.0
+     */
+    public static void collectIfNotEmpty(final TagResolver resolver, final java.util.List<TagResolver> parts) {
+        if (isNotEmpty(resolver)) {
+            parts.add(resolver);
+        }
+    }
 }
