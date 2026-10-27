@@ -27,8 +27,8 @@ dependencies {
     testImplementation(libs.minestom)
     testImplementation(libs.adventure.api)
     testImplementation(libs.adventure.minimessage)
-    testImplementation("ch.qos.logback:logback-classic:1.6.3") // logger
-    testImplementation("com.google.guava:guava:33.7.1-jre")
+    testImplementation("ch.qos.logback:logback-classic:1.6.6") // logger
+    testImplementation("com.google.guava:guava:33.7.2-jre")
 }
 
 tasks {

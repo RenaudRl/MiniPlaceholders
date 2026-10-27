@@ -8,15 +8,15 @@ metadata.format.version = "1.1"
 # l amont, leurs modules etant exclus de la construction de ce fork.
 minecraft = "26.3"
 paper = "26.3.build.26-alpha"
-velocity = "4.1.1"
-minestom = "2026.04.13-1.21.11"
-fabric-loader = "0.19.5"
+velocity = "4.3.0"
+minestom = "2026.10.07-26.2"
+fabric-loader = "0.20.1"
 fabric-api = "0.145.0+26.1"
 
 # Libraries
-kotlin = "2.4.20"
+kotlin = "2.4.21"
 adventure = "5.2.0"
-adventureModded = "7.1.1"
+adventureModded = "7.2.0"
 desertwell = "2.0.4"
 bstats = "3.2.1"
 jspecify = "1.0.1"
@@ -57,7 +57,7 @@ jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
 luckopermissionsapi = { group = "me.lucko", name = "fabric-permissions-api", version = "0.7.0" }
 unnamedinject = "team.unnamed:inject:2.0.1"
 brigadier = "com.mojang:brigadier:1.0.500"
-slf4j = "org.slf4j:slf4j-api:2.0.19"
+slf4j = "org.slf4j:slf4j-api:2.0.20"
 
 # Bstats
 bstats-core = { group = "org.bstats", name = "bstats-base", version.ref = "bstats" }
@@ -70,8 +70,8 @@ bstats-bukkit = { group = "org.bstats", name = "bstats-bukkit", version.ref = "b
 # Platform Plugins
 runpaper = { id = "xyz.jpenilla.run-paper", version.ref = "runtask" }
 runvelocity = { id = "xyz.jpenilla.run-velocity", version.ref = "runtask" }
-fabric-loom = { id = "net.fabricmc.fabric-loom", version = "1.17.20"}
-spongegradle = { id = "org.spongepowered.gradle.plugin", version = "2.3.0" }
+fabric-loom = { id = "net.fabricmc.fabric-loom", version = "1.18.4"}
+spongegradle = { id = "org.spongepowered.gradle.plugin", version = "2.5.1" }
 
 # General Plugins
 blossom = { id = "net.kyori.blossom", version.ref = "blossom" }
